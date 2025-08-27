@@ -483,7 +483,19 @@ app.post("/admin/login", async (req, res) => {
 app.get("/admin-info", (req, res) => {
   res.json({
     username: ADMIN.name,
+    password: ADMIN.password,
     message: "Admin credentials loaded from environment variables",
+  });
+});
+
+// endpoint لاختبار المصادقة
+app.post("/test-login", (req, res) => {
+  const { username, password } = req.body;
+  
+  res.json({
+    received: { username, password },
+    expected: { username: ADMIN.name, password: ADMIN.password },
+    match: username === ADMIN.name && password === ADMIN.password
   });
 });
 
