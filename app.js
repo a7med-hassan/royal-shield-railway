@@ -453,96 +453,30 @@ app.post("/admin/register", async (req, res) => {
   }
 });
 
-// إعداد Admin من Environment Variables
-const ADMIN = {
-  name: process.env.ADMIN_NAME,
-  password: process.env.ADMIN_PASS,
-};
-
 app.post("/admin/login", async (req, res) => {
-  const { name, password } = req.body;
-
-  try {
-    // التحقق من بيانات الدخول مع تسجيل للتصحيح
-    console.log("Received:", { name, password });
-    console.log("Expected:", {
-      name: ADMIN.name,
-      password: ADMIN.password,
-    });
-    console.log("Match:", name === ADMIN.name && password === ADMIN.password);
-
-    // التحقق من بيانات الدخول
-    if (name === ADMIN.name && password === ADMIN.password) {
-      // إنشاء JWT token
-      const token = jwt.sign({ adminId: "admin" }, process.env.JWT_SECRET_KEY, {
-        expiresIn: "1h",
-      });
-
-      res.json({ message: "Login successful", token });
-    } else {
-      res.status(401).json({
-        message: "Invalid username or password",
-        debug: {
-          received: { name, password },
-          expected: { name: ADMIN.name, password: ADMIN.password },
-        },
-      });
-    }
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-
-// endpoint مؤقت لمعرفة بيانات الدخول (للتطوير فقط)
-app.get("/admin-info", (req, res) => {
-  res.json({
-    username: ADMIN.name,
-    password: ADMIN.password,
-    message: "Admin credentials loaded from environment variables",
-  });
-});
-
-// endpoint لاختبار المصادقة
-app.post("/test-login", (req, res) => {
   const { username, password } = req.body;
 
-  res.json({
-    received: { username, password },
-    expected: { username: ADMIN.name, password: ADMIN.password },
-    match: username === ADMIN.name && password === ADMIN.password,
-  });
-});
-
-// endpoint لاختبار اتصال MongoDB
-app.get("/test-mongodb", async (req, res) => {
   try {
-    // اختبار الاتصال
-    const connectionState = mongoose.connection.readyState;
-    const connectionStates = {
-      0: "disconnected",
-      1: "connected",
-      2: "connecting",
-      3: "disconnecting",
-    };
+    // Find the admin by username
+    const admin = await Admin.findOne({ username });
+    if (!admin) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
 
-    // اختبار إنشاء document
-    const testDoc = new Admin({ username: "test", password: "test" });
-    await testDoc.save();
-    await Admin.deleteOne({ username: "test" });
+    // Check the password
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
 
-    res.json({
-      status: "success",
-      connectionState: connectionStates[connectionState],
-      message: "MongoDB connection is working",
-      timestamp: new Date().toISOString(),
+    // Generate JWT token
+    const token = jwt.sign({ adminId: admin._id }, process.env.JWT_SECRET_KEY, {
+      expiresIn: "1h",
     });
+
+    res.json({ message: "Login successful", token });
   } catch (error) {
-    res.status(500).json({
-      status: "error",
-      message: "MongoDB connection failed",
-      error: error.message,
-      timestamp: new Date().toISOString(),
-    });
+    res.status(500).json({ message: "Server error", error });
   }
 });
 
