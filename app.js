@@ -453,31 +453,38 @@ app.post("/admin/register", async (req, res) => {
   }
 });
 
+// إعداد Admin من Environment Variables
+const ADMIN = {
+  name: process.env.ADMIN_NAME,
+  password: process.env.ADMIN_PASS,
+};
+
 app.post("/admin/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // Find the admin by username
-    const admin = await Admin.findOne({ username });
-    if (!admin) {
-      return res.status(401).json({ message: "Invalid username or password" });
+    // التحقق من بيانات الدخول
+    if (username === ADMIN.name && password === ADMIN.password) {
+      // إنشاء JWT token
+      const token = jwt.sign({ adminId: "admin" }, process.env.JWT_SECRET_KEY, {
+        expiresIn: "1h",
+      });
+
+      res.json({ message: "Login successful", token });
+    } else {
+      res.status(401).json({ message: "Invalid username or password" });
     }
-
-    // Check the password
-    const isMatch = await admin.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid username or password" });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign({ adminId: admin._id }, process.env.JWT_SECRET_KEY, {
-      expiresIn: "1h",
-    });
-
-    res.json({ message: "Login successful", token });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
+});
+
+// endpoint مؤقت لمعرفة بيانات الدخول (للتطوير فقط)
+app.get("/admin-info", (req, res) => {
+  res.json({
+    username: ADMIN.name,
+    message: "Admin credentials loaded from environment variables",
+  });
 });
 
 app.post("/send-email", (req, res) => {
