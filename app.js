@@ -4,6 +4,7 @@ const cors = require("cors");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
+const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "your-super-secret-key";
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 const multer = require("multer");
@@ -37,6 +38,31 @@ mongoose
 
 /* admin add or delete serialss */
 app.get("/", (req, res) => res.send("Hello World!"));
+
+// Admin route with OTAT (One-Time Access Token) authentication
+app.get("/admin", async (req, res, next) => {
+  const otat = req.query.otat;
+  if (!otat) return next();
+
+  try {
+    const decoded = jwt.verify(otat, JWT_SECRET_KEY);
+    if (decoded.purpose !== "shield_access") return res.redirect("/admin/login");
+
+    // إنشاء session مؤقت
+    req.session = req.session || {};
+    req.session.user = {
+      id: decoded.id,
+      username: decoded.username,
+      fromNano: true
+    };
+
+    // الدخول مباشرة إلى لوحة التحكم
+    return res.redirect("/admin/serials");
+  } catch (err) {
+    console.error("Invalid OTAT:", err.message);
+    return res.redirect("/admin/login");
+  }
+});
 app.post("/addSerial", async (req, res) => {
   const { serialNumber, branch } = req.body;
 
