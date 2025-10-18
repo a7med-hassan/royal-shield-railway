@@ -63,6 +63,47 @@ app.get("/admin", async (req, res, next) => {
     return res.redirect("/admin/login");
   }
 });
+
+// POST /api/auth/verify-otat - Verify OTAT token
+app.post("/api/auth/verify-otat", async (req, res) => {
+  const { otat } = req.body;
+  
+  if (!otat) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "OTAT token is required" 
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(otat, JWT_SECRET_KEY);
+    
+    // Check token type
+    if (decoded.type !== "shield-access") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Invalid token type" 
+      });
+    }
+    
+    // Return user information
+    return res.json({ 
+      success: true, 
+      user: {
+        id: decoded.id,
+        username: decoded.username,
+        type: decoded.type,
+        purpose: decoded.purpose
+      }
+    });
+  } catch (err) {
+    console.error("OTAT verification error:", err.message);
+    return res.status(401).json({ 
+      success: false, 
+      message: "Invalid or expired OTAT" 
+    });
+  }
+});
 app.post("/addSerial", async (req, res) => {
   const { serialNumber, branch } = req.body;
 
