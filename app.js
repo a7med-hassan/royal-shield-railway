@@ -4,7 +4,7 @@ const cors = require("cors");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
-const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "your-super-secret-key";
+const JWT_SECRET_KEY = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 const multer = require("multer");
@@ -184,7 +184,7 @@ app.get("/viewSerials", async (req, res) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
 
     // Token is valid, proceed to retrieve serials
     const serials = await Serial.find({});
@@ -227,7 +227,7 @@ app.post("/checkSerial", async (req, res) => {
       // Generate JWT token
       const token = jwt.sign(
         { serialNumber: serialNum.serialNumber },
-        process.env.JWT_SECRET_KEY, // Replace with your actual secret key
+        JWT_SECRET_KEY,
         { expiresIn: "24h" } // Token expiration time
       );
 
@@ -314,7 +314,7 @@ app.get("/activatedWarrantys", async (req, res) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
 
     const warrantys = await Warranty.find({});
 
@@ -477,7 +477,7 @@ app.get("/getOffers", async (req, res) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
 
     const offers = await Offer.find({});
     res.status(200).json({ status: "ok", offers });
@@ -537,7 +537,7 @@ app.post("/admin/login", async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ adminId: admin._id }, process.env.JWT_SECRET_KEY, {
+    const token = jwt.sign({ adminId: admin._id }, JWT_SECRET_KEY, {
       expiresIn: "1h",
     });
 
@@ -615,7 +615,7 @@ app.get("/bookForms", async (req, res) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
     const forms = await Appointment.find();
     res.status(200).json(forms);
   } catch (err) {
@@ -685,7 +685,7 @@ app.get("/applicants", async (req, res) => {
   }
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
     const applications = await Application.find();
     if (applications.length > 0) {
       res.json({
