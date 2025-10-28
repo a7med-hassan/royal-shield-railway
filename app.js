@@ -23,6 +23,35 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
+
+// Trusted Origins Middleware - حل ذكي للمواقع الموثوقة
+const allowedOrigins = [
+  "https://www.royalnanoceramic.com",
+  "https://royalnanoceramic.com",
+  "https://royalshieldworld.com",
+  "https://www.royalshieldworld.com",
+  "http://localhost:4200"
+];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // لو الطلب جاي من دومين موثوق → متطلبش توكن
+  if (allowedOrigins.includes(origin)) {
+    console.log("✅ Trusted origin:", origin);
+    return next();
+  }
+
+  // لو مش من دومين موثوق → فعّل الحماية العادية
+  if (!req.headers.authorization) {
+    console.log("❌ Unauthorized access from:", origin);
+    return res.status(403).json({ message: "Invalid token" });
+  }
+
+  // ممكن تضيف هنا كود التحقق من التوكن (لو حابب)
+  next();
+});
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -53,7 +82,21 @@ app.get("/api/test", (req, res) => {
     message: "Royal Shield Backend is working!",
     timestamp: new Date().toISOString(),
     origin: req.headers.origin,
-    userAgent: req.headers['user-agent']
+    userAgent: req.headers['user-agent'],
+    trustedOrigin: allowedOrigins.includes(req.headers.origin)
+  });
+});
+
+// Test endpoint for trusted origins
+app.get("/api/trusted-test", (req, res) => {
+  const origin = req.headers.origin;
+  const isTrusted = allowedOrigins.includes(origin);
+  
+  res.json({
+    message: isTrusted ? "✅ Trusted Origin Access" : "❌ Untrusted Origin",
+    origin: origin,
+    isTrusted: isTrusted,
+    timestamp: new Date().toISOString()
   });
 });
 
