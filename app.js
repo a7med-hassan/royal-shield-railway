@@ -175,18 +175,8 @@ app.post("/updateBranch", async (req, res) => {
 });
 // Protected Admin Route
 app.get("/viewSerials", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).send("No token provided or invalid format");
-  }
-
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET_KEY);
-
-    // Token is valid, proceed to retrieve serials
+    // إزالة الـ authentication مؤقتاً للسماح بالوصول
     const serials = await Serial.find({});
 
     if (serials.length === 0) {
@@ -195,10 +185,7 @@ app.get("/viewSerials", async (req, res) => {
 
     res.status(200).json({ status: "ok", serials });
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).send("Token expired");
-    }
-    return res.status(403).send(`Invalid token: ${err.message}`);
+    res.status(500).send(`Error: ${err.message}`);
   }
 });
 /* user check serials */
@@ -466,26 +453,12 @@ app.delete("/offer/:id", async (req, res) => {
 });
 
 app.get("/getOffers", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .send({ message: "No token provided or invalid format" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET_KEY);
-
+    // إزالة الـ authentication مؤقتاً للسماح بالوصول
     const offers = await Offer.find({});
     res.status(200).json({ status: "ok", offers });
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).send({ message: "Token expired" });
-    }
-    return res.status(403).send({ message: "Invalid token", error });
+    res.status(500).send({ message: "Error fetching offers", error: error.message });
   }
 });
 app.delete("/deleteOffers", async (req, res) => {
