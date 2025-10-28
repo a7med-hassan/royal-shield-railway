@@ -236,29 +236,40 @@ app.post("/updateBranch", async (req, res) => {
 });
 // Protected Admin Route
 app.get("/viewSerials", async (req, res) => {
-  const authHeader = req.headers["authorization"];
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "https://www.royalnanoceramic.com",
+    "https://royalnanoceramic.com",
+    "https://royalshieldworld.com",
+    "https://www.royalshieldworld.com",
+    "http://localhost:4200"
+  ];
 
+  // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+  if (allowedOrigins.includes(origin)) {
+    console.log("✅ Trusted origin (no token required):", origin);
+    const serials = await Serial.find({});
+    if (serials.length === 0) {
+      return res.status(404).send("No serials found");
+    }
+    return res.status(200).json({ status: "ok", serials });
+  }
+
+  // ⛔ باقي الطلبات لازم توكن
+  const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).send("No token provided or invalid format");
   }
 
   const token = authHeader.split(" ")[1];
-
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY);
-
-    // Token is valid, proceed to retrieve serials
     const serials = await Serial.find({});
-
     if (serials.length === 0) {
       return res.status(404).send("No serials found");
     }
-
     res.status(200).json({ status: "ok", serials });
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).send("Token expired");
-    }
     return res.status(403).send(`Invalid token: ${err.message}`);
   }
 });
@@ -368,25 +379,40 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
 });
 
 app.get("/activatedWarrantys", async (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "https://www.royalnanoceramic.com",
+    "https://royalnanoceramic.com",
+    "https://royalshieldworld.com",
+    "https://www.royalshieldworld.com",
+    "http://localhost:4200"
+  ];
+
+  // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+  if (allowedOrigins.includes(origin)) {
+    console.log("✅ Trusted origin (no token required):", origin);
+    const warrantys = await Warranty.find({});
+    if (warrantys.length === 0) {
+      return res.status(404).send("No warrantys found");
+    }
+    return res.status(200).json({ status: "ok", warrantys });
+  }
+
+  // ⛔ باقي الطلبات لازم توكن
   const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).send("No token provided or invalid format");
   }
-  const token = authHeader.split(" ")[1];
 
+  const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY);
-
     const warrantys = await Warranty.find({});
-
     if (warrantys.length === 0) {
       return res.status(404).send("No warrantys found");
     }
     res.status(200).json({ status: "ok", warrantys });
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).send("Token expired");
-    }
     return res.status(403).send(`Invalid token: ${err.message}`);
   }
 });
@@ -527,8 +553,24 @@ app.delete("/offer/:id", async (req, res) => {
 });
 
 app.get("/getOffers", async (req, res) => {
-  const authHeader = req.headers["authorization"];
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "https://www.royalnanoceramic.com",
+    "https://royalnanoceramic.com",
+    "https://royalshieldworld.com",
+    "https://www.royalshieldworld.com",
+    "http://localhost:4200"
+  ];
 
+  // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+  if (allowedOrigins.includes(origin)) {
+    console.log("✅ Trusted origin (no token required):", origin);
+    const offers = await Offer.find({});
+    return res.status(200).json({ status: "ok", offers });
+  }
+
+  // ⛔ باقي الطلبات لازم توكن
+  const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res
       .status(401)
@@ -536,17 +578,12 @@ app.get("/getOffers", async (req, res) => {
   }
 
   const token = authHeader.split(" ")[1];
-
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY);
-
     const offers = await Offer.find({});
     res.status(200).json({ status: "ok", offers });
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).send({ message: "Token expired" });
-    }
-    return res.status(403).send({ message: "Invalid token", error });
+    return res.status(403).send({ message: "Invalid token", error: error.message });
   }
 });
 app.delete("/deleteOffers", async (req, res) => {
@@ -668,21 +705,34 @@ app.post("/bookForm", async (req, res) => {
 
 // GET Endpoint to retrieve all form data //NANO CERAMIC
 app.get("/bookForms", async (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "https://www.royalnanoceramic.com",
+    "https://royalnanoceramic.com",
+    "https://royalshieldworld.com",
+    "https://www.royalshieldworld.com",
+    "http://localhost:4200"
+  ];
+
+  // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+  if (allowedOrigins.includes(origin)) {
+    console.log("✅ Trusted origin (no token required):", origin);
+    const forms = await Appointment.find();
+    return res.status(200).json(forms);
+  }
+
+  // ⛔ باقي الطلبات لازم توكن
   const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).send("No token provided or invalid format");
   }
 
   const token = authHeader.split(" ")[1];
-
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY);
     const forms = await Appointment.find();
     res.status(200).json(forms);
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).send("Token expired");
-    }
     return res.status(403).send(`Invalid token: ${err.message}`);
   }
 });
@@ -740,10 +790,37 @@ app.post(
 );
 
 app.get("/applicants", async (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "https://www.royalnanoceramic.com",
+    "https://royalnanoceramic.com",
+    "https://royalshieldworld.com",
+    "https://www.royalshieldworld.com",
+    "http://localhost:4200"
+  ];
+
+  // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+  if (allowedOrigins.includes(origin)) {
+    console.log("✅ Trusted origin (no token required):", origin);
+    const applications = await Application.find();
+    if (applications.length > 0) {
+      return res.json({
+        statue: "success",
+        data: {
+          applications,
+        },
+      });
+    } else {
+      return res.json({ statue: "empty" });
+    }
+  }
+
+  // ⛔ باقي الطلبات لازم توكن
   const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).send("No token provided or invalid format");
   }
+
   const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY);
