@@ -9,9 +9,64 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 const multer = require("multer");
 
+// Firebase Admin SDK
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin
+if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+  const serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  };
+  
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  console.log("✅ Firebase Admin initialized successfully");
+} else {
+  console.log("⚠️ Firebase Admin not initialized - missing environment variables");
+}
+
 const path = require("path");
 
 const app = express();
+
+// Firebase Authentication Middleware
+const authenticateFirebase = async (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "No token provided or invalid format" });
+  }
+  
+  const token = authHeader.split(" ")[1];
+  
+  try {
+    // محاولة التحقق من Firebase token أولاً
+    const decodedFirebase = await admin.auth().verifyIdToken(token);
+    req.user = {
+      uid: decodedFirebase.uid,
+      email: decodedFirebase.email,
+      authType: 'firebase'
+    };
+    return next();
+  } catch (firebaseError) {
+    try {
+      // إذا فشل Firebase، جرب JWT token
+      const decodedJWT = jwt.verify(token, JWT_SECRET_KEY);
+      req.user = {
+        id: decodedJWT.id || decodedJWT.adminId,
+        username: decodedJWT.username,
+        authType: 'jwt'
+      };
+      return next();
+    } catch (jwtError) {
+      console.log("❌ Authentication failed:", { firebaseError: firebaseError.message, jwtError: jwtError.message });
+      return res.status(403).json({ message: "Invalid token" });
+    }
+  }
+};
 
 app.use(express.json());
 app.use(cors());
@@ -174,9 +229,9 @@ app.post("/updateBranch", async (req, res) => {
   }
 });
 // Protected Admin Route
-app.get("/viewSerials", async (req, res) => {
+app.get("/viewSerials", authenticateFirebase, async (req, res) => {
   try {
-    // إزالة الـ authentication مؤقتاً للسماح بالوصول
+    console.log("✅ User authenticated:", req.user);
     const serials = await Serial.find({});
 
     if (serials.length === 0) {
@@ -293,9 +348,9 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
   }
 });
 
-app.get("/activatedWarrantys", async (req, res) => {
+app.get("/activatedWarrantys", authenticateFirebase, async (req, res) => {
   try {
-    // إزالة الـ authentication مؤقتاً للسماح بالوصول
+    console.log("✅ User authenticated:", req.user);
     const warrantys = await Warranty.find({});
 
     if (warrantys.length === 0) {
@@ -442,9 +497,9 @@ app.delete("/offer/:id", async (req, res) => {
   }
 });
 
-app.get("/getOffers", async (req, res) => {
+app.get("/getOffers", authenticateFirebase, async (req, res) => {
   try {
-    // إزالة الـ authentication مؤقتاً للسماح بالوصول
+    console.log("✅ User authenticated:", req.user);
     const offers = await Offer.find({});
     res.status(200).json({ status: "ok", offers });
   } catch (error) {
@@ -569,9 +624,9 @@ app.post("/bookForm", async (req, res) => {
 });
 
 // GET Endpoint to retrieve all form data //NANO CERAMIC
-app.get("/bookForms", async (req, res) => {
+app.get("/bookForms", authenticateFirebase, async (req, res) => {
   try {
-    // إزالة الـ authentication مؤقتاً للسماح بالوصول
+    console.log("✅ User authenticated:", req.user);
     const forms = await Appointment.find();
     res.status(200).json(forms);
   } catch (err) {
@@ -631,9 +686,9 @@ app.post(
   }
 );
 
-app.get("/applicants", async (req, res) => {
+app.get("/applicants", authenticateFirebase, async (req, res) => {
   try {
-    // إزالة الـ authentication مؤقتاً للسماح بالوصول
+    console.log("✅ User authenticated:", req.user);
     const applications = await Application.find();
     if (applications.length > 0) {
       res.json({
