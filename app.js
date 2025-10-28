@@ -9,74 +9,24 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 const multer = require("multer");
 
-// Firebase Admin SDK
-const admin = require('firebase-admin');
-
-// Initialize Firebase Admin
-if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  };
-  
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-  console.log("✅ Firebase Admin initialized successfully");
-} else {
-  console.log("⚠️ Firebase Admin not initialized - missing environment variables");
-}
-
 const path = require("path");
 
 const app = express();
 
-// Firebase Authentication Middleware
-const authenticateFirebase = async (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "No token provided or invalid format" });
-  }
-  
-  const token = authHeader.split(" ")[1];
-  
-  try {
-    // محاولة التحقق من Firebase token أولاً
-    const decodedFirebase = await admin.auth().verifyIdToken(token);
-    req.user = {
-      uid: decodedFirebase.uid,
-      email: decodedFirebase.email,
-      authType: 'firebase'
-    };
-    return next();
-  } catch (firebaseError) {
-    try {
-      // إذا فشل Firebase، جرب JWT token
-      const decodedJWT = jwt.verify(token, JWT_SECRET_KEY);
-      req.user = {
-        id: decodedJWT.id || decodedJWT.adminId,
-        username: decodedJWT.username,
-        authType: 'jwt'
-      };
-      return next();
-    } catch (jwtError) {
-      console.log("❌ Authentication failed:", { firebaseError: firebaseError.message, jwtError: jwtError.message });
-      return res.status(403).json({ message: "Invalid token" });
-    }
-  }
-};
-
 app.use(express.json());
 app.use(cors({
   origin: [
-    "https://www.royalnanoceramic.com",
-    "https://royalshieldworld.com",
-    "http://localhost:4200"
+    'https://royalnanoceramic.com',
+    'https://www.royalnanoceramic.com',
+    'http://localhost:4200',
+    'http://localhost:3000',
+    // يمكنك إضافة الموقع الجديد هنا
+    // 'https://your-new-site.com',
+    // 'https://www.your-new-site.com'
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -101,6 +51,16 @@ mongoose
 
 /* admin add or delete serialss */
 app.get("/", (req, res) => res.send("Hello World!"));
+
+// Test endpoint for multiple sites
+app.get("/api/test", (req, res) => {
+  res.json({
+    message: "Royal Shield Backend is working!",
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin,
+    userAgent: req.headers['user-agent']
+  });
+});
 
 // Admin route with OTAT (One-Time Access Token) authentication
 app.get("/admin", async (req, res, next) => {
@@ -237,9 +197,19 @@ app.post("/updateBranch", async (req, res) => {
   }
 });
 // Protected Admin Route
-app.get("/viewSerials", authenticateFirebase, async (req, res) => {
+app.get("/viewSerials", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).send("No token provided or invalid format");
+  }
+
+  const token = authHeader.split(" ")[1];
+
   try {
-    console.log("✅ User authenticated:", req.user);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
+
+    // Token is valid, proceed to retrieve serials
     const serials = await Serial.find({});
 
     if (serials.length === 0) {
@@ -248,7 +218,10 @@ app.get("/viewSerials", authenticateFirebase, async (req, res) => {
 
     res.status(200).json({ status: "ok", serials });
   } catch (err) {
-    res.status(500).send(`Error: ${err.message}`);
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).send("Token expired");
+    }
+    return res.status(403).send(`Invalid token: ${err.message}`);
   }
 });
 /* user check serials */
@@ -356,9 +329,16 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
   }
 });
 
-app.get("/activatedWarrantys", authenticateFirebase, async (req, res) => {
+app.get("/activatedWarrantys", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).send("No token provided or invalid format");
+  }
+  const token = authHeader.split(" ")[1];
+
   try {
-    console.log("✅ User authenticated:", req.user);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
+
     const warrantys = await Warranty.find({});
 
     if (warrantys.length === 0) {
@@ -366,7 +346,10 @@ app.get("/activatedWarrantys", authenticateFirebase, async (req, res) => {
     }
     res.status(200).json({ status: "ok", warrantys });
   } catch (err) {
-    res.status(500).send(`Error: ${err.message}`);
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).send("Token expired");
+    }
+    return res.status(403).send(`Invalid token: ${err.message}`);
   }
 });
 // Delete activation by serial number and send all remaining activations
@@ -505,13 +488,27 @@ app.delete("/offer/:id", async (req, res) => {
   }
 });
 
-app.get("/getOffers", authenticateFirebase, async (req, res) => {
+app.get("/getOffers", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .send({ message: "No token provided or invalid format" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
   try {
-    console.log("✅ User authenticated:", req.user);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
+
     const offers = await Offer.find({});
     res.status(200).json({ status: "ok", offers });
   } catch (error) {
-    res.status(500).send({ message: "Error fetching offers", error: error.message });
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).send({ message: "Token expired" });
+    }
+    return res.status(403).send({ message: "Invalid token", error });
   }
 });
 app.delete("/deleteOffers", async (req, res) => {
@@ -632,13 +629,23 @@ app.post("/bookForm", async (req, res) => {
 });
 
 // GET Endpoint to retrieve all form data //NANO CERAMIC
-app.get("/bookForms", authenticateFirebase, async (req, res) => {
+app.get("/bookForms", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).send("No token provided or invalid format");
+  }
+
+  const token = authHeader.split(" ")[1];
+
   try {
-    console.log("✅ User authenticated:", req.user);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
     const forms = await Appointment.find();
     res.status(200).json(forms);
   } catch (err) {
-    res.status(500).send(`Error: ${err.message}`);
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).send("Token expired");
+    }
+    return res.status(403).send(`Invalid token: ${err.message}`);
   }
 });
 
@@ -694,9 +701,14 @@ app.post(
   }
 );
 
-app.get("/applicants", authenticateFirebase, async (req, res) => {
+app.get("/applicants", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).send("No token provided or invalid format");
+  }
+  const token = authHeader.split(" ")[1];
   try {
-    console.log("✅ User authenticated:", req.user);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
     const applications = await Application.find();
     if (applications.length > 0) {
       res.json({
@@ -709,7 +721,7 @@ app.get("/applicants", authenticateFirebase, async (req, res) => {
       res.json({ statue: "empty" });
     }
   } catch (error) {
-    res.status(500).send(`Error: ${error.message}`);
+    res.send(error);
   }
 });
 
