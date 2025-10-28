@@ -16,17 +16,12 @@ const app = express();
 app.use(express.json());
 app.use(cors({
   origin: [
-    'https://royalnanoceramic.com',
-    'https://www.royalnanoceramic.com',
-    'http://localhost:4200',
-    'http://localhost:3000',
-    // يمكنك إضافة الموقع الجديد هنا
-    // 'https://your-new-site.com',
-    // 'https://www.your-new-site.com'
+    "https://www.royalnanoceramic.com", // الموقع الأول
+    "https://royalshieldworld.com",     // الموقع الثاني
+    "http://localhost:4200"              // التجارب المحلية
   ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
