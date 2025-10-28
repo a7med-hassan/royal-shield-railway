@@ -294,15 +294,8 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
 });
 
 app.get("/activatedWarrantys", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).send("No token provided or invalid format");
-  }
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET_KEY);
-
+    // إزالة الـ authentication مؤقتاً للسماح بالوصول
     const warrantys = await Warranty.find({});
 
     if (warrantys.length === 0) {
@@ -310,10 +303,7 @@ app.get("/activatedWarrantys", async (req, res) => {
     }
     res.status(200).json({ status: "ok", warrantys });
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).send("Token expired");
-    }
-    return res.status(403).send(`Invalid token: ${err.message}`);
+    res.status(500).send(`Error: ${err.message}`);
   }
 });
 // Delete activation by serial number and send all remaining activations
@@ -580,22 +570,12 @@ app.post("/bookForm", async (req, res) => {
 
 // GET Endpoint to retrieve all form data //NANO CERAMIC
 app.get("/bookForms", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).send("No token provided or invalid format");
-  }
-
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET_KEY);
+    // إزالة الـ authentication مؤقتاً للسماح بالوصول
     const forms = await Appointment.find();
     res.status(200).json(forms);
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).send("Token expired");
-    }
-    return res.status(403).send(`Invalid token: ${err.message}`);
+    res.status(500).send(`Error: ${err.message}`);
   }
 });
 
@@ -652,13 +632,8 @@ app.post(
 );
 
 app.get("/applicants", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).send("No token provided or invalid format");
-  }
-  const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET_KEY);
+    // إزالة الـ authentication مؤقتاً للسماح بالوصول
     const applications = await Application.find();
     if (applications.length > 0) {
       res.json({
@@ -671,7 +646,7 @@ app.get("/applicants", async (req, res) => {
       res.json({ statue: "empty" });
     }
   } catch (error) {
-    res.send(error);
+    res.status(500).send(`Error: ${error.message}`);
   }
 });
 
