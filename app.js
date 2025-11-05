@@ -16,12 +16,16 @@ const app = express();
 app.use(express.json());
 app.use(cors({
   origin: [
-    "https://www.royalnanoceramic.com", // الموقع الأول
-    "https://royalshieldworld.com",     // الموقع الثاني
-    "http://localhost:4200"              // التجارب المحلية
+    "https://www.royalnanoceramic.com",
+    "https://royalnanoceramic.com",      // بدون www
+    "https://royalshieldworld.com",
+    "https://www.royalshieldworld.com",  // بدون www
+    "http://localhost:4200"
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Origin", "X-Requested-With"],
   credentials: true,
+  optionsSuccessStatus: 200 // For legacy browser support
 }));
 
 // Trusted Origins Middleware - حل ذكي للمواقع الموثوقة
