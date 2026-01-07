@@ -10,7 +10,9 @@ const warrantySchema = new schema({
   model: String,
   color: String,
   email: String,
-  serialNumber: String,
+  serialNumber: String, // للحفاظ على التوافق مع الكود القديم
+  productCode: String, // كود المنتج/السيريال الخارجي
+  internalSerial: String, // السيريال الداخلي المستخدم في التفعيل
   imagePath: String,
   createdAt: {
     type: Date,

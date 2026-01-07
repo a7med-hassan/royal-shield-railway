@@ -62,6 +62,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const Warranty = require("./models/warranty");
 const Serial = require("./models/serial");
+const Product = require("./models/product");
 const Offer = require("./models/offer");
 const Admin = require("./models/admin");
 const Appointment = require("./models/appointment");
@@ -170,23 +171,41 @@ app.post("/api/auth/verify-otat", async (req, res) => {
   }
 });
 app.post("/addSerial", async (req, res) => {
-  const { serialNumber, branch } = req.body;
+  const { productCode, internalSerial, branch } = req.body;
 
   try {
-    const existingSerial = await Serial.findOne({ serialNumber });
-    if (existingSerial) {
-      return res.status(400).send({ msg: "Serial already exists" });
-    } else if (!branch) {
-      return res.status(400).send({ msg: "No branch has been added" });
-    } else {
-      const newSerial = new Serial({
-        serialNumber,
-        branch,
-      });
-      await newSerial.save();
-      const serials = await Serial.find({});
-      res.status(201).send({ msg: "success", serials: serials });
+    // التحقق من وجود الحقول المطلوبة
+    if (!productCode || !internalSerial) {
+      return res.status(400).send({ msg: "Product code and internal serial are required" });
     }
+    
+    if (!branch) {
+      return res.status(400).send({ msg: "No branch has been added" });
+    }
+
+    // التحقق من عدم تكرار productCode
+    const existingProductCode = await Serial.findOne({ productCode });
+    if (existingProductCode) {
+      return res.status(400).send({ msg: "Product code already exists" });
+    }
+
+    // التحقق من عدم تكرار internalSerial
+    const existingInternalSerial = await Serial.findOne({ internalSerial });
+    if (existingInternalSerial) {
+      return res.status(400).send({ msg: "Internal serial already exists" });
+    }
+
+    // إنشاء السيريال الجديد
+    const newSerial = new Serial({
+      productCode,
+      internalSerial,
+      branch,
+      serialNumber: productCode, // للحفاظ على التوافق مع الكود القديم
+    });
+    
+    await newSerial.save();
+    const serials = await Serial.find({});
+    res.status(201).send({ msg: "success", serials: serials });
   } catch (error) {
     res.status(500).send(`Error: ${error.message}`);
   }
@@ -194,13 +213,34 @@ app.post("/addSerial", async (req, res) => {
 
 app.post("/deleteSerial", async (req, res) => {
   console.log(req.body);
-  const { serialNumber } = req.body;
+  const { serialNumber, productCode } = req.body;
+  const codeToDelete = productCode || serialNumber;
+  
+  if (!codeToDelete) {
+    return res.status(400).send({ msg: "Serial number or product code is required" });
+  }
+
   try {
-    const deletedSerial = await Serial.findOneAndDelete({ serialNumber });
+    const deletedSerial = await Serial.findOneAndDelete({
+      $or: [
+        { productCode: codeToDelete },
+        { serialNumber: codeToDelete }
+      ]
+    });
+    
     console.log(deletedSerial);
     if (!deletedSerial) {
       return res.status(404).send("Serial not found");
     }
+    
+    // حذف الضمان المرتبط إذا كان موجوداً
+    await Warranty.deleteMany({
+      $or: [
+        { productCode: codeToDelete },
+        { serialNumber: codeToDelete }
+      ]
+    });
+    
     const serial = await Serial.find({});
     res.status(200).send({ msg: "success", serial: serial });
   } catch (err) {
@@ -219,7 +259,12 @@ app.post("/updateBranch", async (req, res) => {
 
   try {
     const updatedSerial = await Serial.findOneAndUpdate(
-      { serialNumber },
+      { 
+        $or: [
+          { serialNumber: serialNumber },
+          { productCode: serialNumber }
+        ]
+      },
       { branch },
       { new: true }
     );
@@ -236,6 +281,50 @@ app.post("/updateBranch", async (req, res) => {
     res
       .status(500)
       .send({ msg: "Error updating branch", error: error.message });
+  }
+});
+
+// Update serial - تحديث السيريال (productCode, internalSerial, branch)
+app.put("/updateSerial", async (req, res) => {
+  const { serialId, productCode, internalSerial, branch } = req.body;
+
+  if (!serialId) {
+    return res.status(400).send({ msg: "Serial ID is required" });
+  }
+
+  try {
+    const updateData = {};
+    if (productCode) updateData.productCode = productCode;
+    if (internalSerial) updateData.internalSerial = internalSerial;
+    if (branch) updateData.branch = branch;
+
+    // إذا تم تحديث productCode، نحدث serialNumber أيضاً للحفاظ على التوافق
+    if (productCode) {
+      updateData.serialNumber = productCode;
+    }
+
+    const updatedSerial = await Serial.findByIdAndUpdate(
+      serialId,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedSerial) {
+      return res.status(404).send({ msg: "Serial not found" });
+    }
+
+    // Fetch all serials, maintaining the order
+    const serials = await Serial.find({}).sort({ _id: 1 });
+
+    res.status(200).send({ 
+      msg: "Serial updated successfully", 
+      serial: updatedSerial,
+      serials 
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ msg: "Error updating serial", error: error.message });
   }
 });
 // Protected Admin Route
@@ -277,51 +366,160 @@ app.get("/viewSerials", async (req, res) => {
     return res.status(403).send(`Invalid token: ${err.message}`);
   }
 });
-/* user check serials */
+/* user check serials - التحقق من السيريال الخارجي (productCode) */
 app.post("/checkSerial", async (req, res) => {
   try {
-    const { serialNumber } = req.body;
-    console.log(serialNumber);
-    const serialNum = await Serial.findOne({ serialNumber });
-
-    if (serialNum.activated) {
-      const curSerial = serialNum.serialNumber;
-      const { name, phoneNumber } = await Warranty.findOne({
-        serialNumber: curSerial,
-      });
-      const hiddenName = name.slice(0, 3);
-      const hiddenPhone = phoneNumber.slice(-3);
-      return res.send({
-        status: "act",
-        owner: { name: hiddenName, phone: hiddenPhone },
+    const { productCode } = req.body; // السيريال الخارجي من الكرتونة
+    console.log("Checking product code:", productCode);
+    
+    if (!productCode) {
+      return res.status(400).send({ 
+        status: "false", 
+        msg: "Product code is required" 
       });
     }
-    if (serialNum && serialNum.numOfChecks > 0) {
+
+    // البحث عن السيريال باستخدام productCode
+    const serialNum = await Serial.findOne({ 
+      $or: [
+        { productCode: productCode },
+        { serialNumber: productCode } // للحفاظ على التوافق مع البيانات القديمة
+      ]
+    });
+
+    if (!serialNum) {
+      return res.send({
+        status: "false",
+        msg: "السيريال غير موجود",
+      });
+    }
+
+    // التحقق من حالة التفعيل
+    if (serialNum.activated) {
+      const warranty = await Warranty.findOne({
+        $or: [
+          { productCode: serialNum.productCode },
+          { serialNumber: serialNum.productCode || serialNum.serialNumber }
+        ]
+      });
+      
+      if (warranty) {
+        const hiddenName = warranty.name.slice(0, 3);
+        const hiddenPhone = warranty.phoneNumber.slice(-3);
+        return res.send({
+          status: "act",
+          owner: { name: hiddenName, phone: hiddenPhone },
+        });
+      }
+    }
+
+    // التحقق من عدد المحاولات
+    if (serialNum.numOfChecks > 0) {
       serialNum.numOfChecks -= 1;
       await serialNum.save();
 
+      // البحث عن تفاصيل المنتج
+      let productInfo = null;
+      if (serialNum.productCode) {
+        productInfo = await Product.findOne({ code: serialNum.productCode });
+      }
+
       // Generate JWT token
       const token = jwt.sign(
-        { serialNumber: serialNum.serialNumber },
+        { 
+          productCode: serialNum.productCode || serialNum.serialNumber,
+          internalSerial: serialNum.internalSerial 
+        },
         JWT_SECRET_KEY,
-        { expiresIn: "24h" } // Token expiration time
+        { expiresIn: "24h" }
       );
 
-      res.send({ status: "ok", serialNum, token });
-    } else if (serialNum && serialNum.numOfChecks == 0) {
+      res.send({ 
+        status: "ok", 
+        productCode: serialNum.productCode || serialNum.serialNumber,
+        productInfo: productInfo || {
+          code: serialNum.productCode || serialNum.serialNumber,
+          name: "منتج"
+        },
+        token 
+      });
+    } else if (serialNum.numOfChecks == 0) {
       res.send({
         status: "false",
         msg: "You can't check serial number more than 3 times",
       });
     }
   } catch (error) {
-    res.status(500).send({ message: "An error occurred", error });
+    console.error("Error in checkSerial:", error);
+    res.status(500).send({ message: "An error occurred", error: error.message });
   }
 });
 
 const uploadWarranty = multer({ dest: "uploads/" });
 
-/* activate serial */
+/* verify internal serial - التحقق من السيريال الداخلي */
+app.post("/verifyInternalSerial", async (req, res) => {
+  try {
+    const { productCode, internalSerial } = req.body;
+
+    if (!productCode || !internalSerial) {
+      return res.status(400).send({
+        success: false,
+        msg: "Product code and internal serial are required",
+      });
+    }
+
+    // البحث عن السيريال باستخدام productCode
+    const serialNum = await Serial.findOne({
+      $or: [
+        { productCode: productCode },
+        { serialNumber: productCode } // للحفاظ على التوافق مع البيانات القديمة
+      ]
+    });
+
+    if (!serialNum) {
+      return res.send({
+        success: false,
+        msg: "السيريال الخارجي غير موجود",
+      });
+    }
+
+    // التحقق من تطابق السيريال الداخلي
+    if (serialNum.internalSerial === internalSerial) {
+      // Generate JWT token للتفعيل
+      const token = jwt.sign(
+        {
+          productCode: serialNum.productCode || serialNum.serialNumber,
+          internalSerial: serialNum.internalSerial,
+        },
+        JWT_SECRET_KEY,
+        { expiresIn: "1h" } // Token expiration time للتفعيل
+      );
+
+      return res.send({
+        success: true,
+        msg: "السيريال صحيح",
+        token,
+        productCode: serialNum.productCode || serialNum.serialNumber,
+        internalSerial: serialNum.internalSerial,
+      });
+    } else {
+      return res.send({
+        success: false,
+        msg: "في حاجة غلط",
+      });
+    }
+  } catch (error) {
+    console.error("Error in verifyInternalSerial:", error);
+    res.status(500).send({
+      success: false,
+      message: "An error occurred",
+      error: error.message,
+    });
+  }
+});
+
+/* activate serial - تفعيل الضمان */
 app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
   const {
     name,
@@ -332,19 +530,63 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
     model,
     color,
     email,
-    serialNumber,
+    serialNumber, // للحفاظ على التوافق مع الكود القديم
+    productCode, // كود المنتج/السيريال الخارجي
+    internalSerial, // السيريال الداخلي
     createdAt,
   } = req.body;
 
   try {
-    if (serialNumber !== "Royal-Nano") {
-      const foundSerial = await Serial.findOne({ serialNumber });
-      if (!foundSerial) {
-        return res.send({ msg: "not found" });
-      }
+    // استخدام productCode إذا كان موجوداً، وإلا استخدام serialNumber (للتوافق مع البيانات القديمة)
+    const codeToUse = productCode || serialNumber;
+    
+    if (!codeToUse || codeToUse === "Royal-Nano") {
+      // معالجة الحالة الخاصة Royal-Nano
+      const newActivation = new Warranty({
+        name,
+        phoneNumber,
+        birthdate,
+        address,
+        brand,
+        model,
+        color,
+        email,
+        serialNumber: codeToUse || "Royal-Nano",
+        productCode: codeToUse || "Royal-Nano",
+        internalSerial: internalSerial || "",
+        createdAt,
+        imagePath: req.file ? req.file.path : "",
+      });
+      await newActivation.save();
+      return res.status(201).send({
+        msg: "success",
+        activation: newActivation,
+        imageUrl: req.file ? req.file.path : "",
+      });
+    }
 
-      if (foundSerial.activated) {
-        const activatedWarranty = await Warranty.findOne({ serialNumber });
+    // البحث عن السيريال باستخدام productCode
+    const foundSerial = await Serial.findOne({
+      $or: [
+        { productCode: codeToUse },
+        { serialNumber: codeToUse } // للحفاظ على التوافق مع البيانات القديمة
+      ]
+    });
+
+    if (!foundSerial) {
+      return res.status(404).send({ msg: "not found" });
+    }
+
+    // التحقق من حالة التفعيل
+    if (foundSerial.activated) {
+      const activatedWarranty = await Warranty.findOne({
+        $or: [
+          { productCode: foundSerial.productCode || foundSerial.serialNumber },
+          { serialNumber: foundSerial.productCode || foundSerial.serialNumber }
+        ]
+      });
+      
+      if (activatedWarranty) {
         return res.send({
           msg: "activated",
           owner: {
@@ -353,11 +595,22 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
           },
         });
       }
-
-      foundSerial.activated = true;
-      await foundSerial.save();
     }
 
+    // التحقق من السيريال الداخلي إذا كان موجوداً
+    if (internalSerial && foundSerial.internalSerial) {
+      if (foundSerial.internalSerial !== internalSerial) {
+        return res.status(400).send({
+          msg: "في حاجة غلط - السيريال الداخلي غير صحيح",
+        });
+      }
+    }
+
+    // تفعيل السيريال
+    foundSerial.activated = true;
+    await foundSerial.save();
+
+    // إنشاء سجل الضمان
     const newActivation = new Warranty({
       name,
       phoneNumber,
@@ -367,17 +620,22 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
       model,
       color,
       email,
-      serialNumber,
+      serialNumber: foundSerial.productCode || foundSerial.serialNumber, // للحفاظ على التوافق
+      productCode: foundSerial.productCode || foundSerial.serialNumber,
+      internalSerial: foundSerial.internalSerial || internalSerial || "",
       createdAt,
-      imagePath: req.file.path, // Save image path to warranty
+      imagePath: req.file ? req.file.path : "", // Save image path to warranty
     });
+    
     await newActivation.save();
+    
     res.status(201).send({
       msg: "success",
       activation: newActivation,
-      imageUrl: req.file.path, // Return image path
+      imageUrl: req.file ? req.file.path : "", // Return image path
     });
   } catch (err) {
+    console.error("Error in activation:", err);
     res.status(500).send(`Error: ${err.message}`);
   }
 });
