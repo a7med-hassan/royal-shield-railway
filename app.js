@@ -60,6 +60,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+const branchOtpRoutes = require("./routes/branchOtp.routes");
+const adminBranchRoutes = require("./routes/adminBranch.routes");
+const warrantyNewRoutes = require("./routes/warrantyNew.routes");
+
+app.use("/api/branch-otp", branchOtpRoutes);
+app.use("/api/admin/branches", adminBranchRoutes);
+app.use("/api/warranty", warrantyNewRoutes);
+
 const Warranty = require("./models/warranty");
 const Serial = require("./models/serial");
 const Product = require("./models/product");
