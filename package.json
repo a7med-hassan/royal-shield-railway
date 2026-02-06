@@ -22,5 +22,8 @@
     "nodemailer": "^6.9.15",
     "pdfmake": "^0.2.12",
     "uuid": "^10.0.0"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
