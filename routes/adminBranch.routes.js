@@ -3,7 +3,7 @@ const router = express.Router();
 const Branch = require("../models/Branch");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || "royal-shield-secret-2024";
+const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
 
 // Middleware to protect admin routes (Reuse existing OTAT or standard auth logic from app.js if possible, or simple check)
 // For now, I will assume the caller sends the standard Bearer token used in the app, and we verify it matches an admin.

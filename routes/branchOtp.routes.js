@@ -7,7 +7,7 @@ const Branch = require("../models/Branch");
 const OtpRequest = require("../models/OtpRequest");
 
 // Config
-const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || "royal-shield-secret-2024";
+const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
 const OTP_EXPIRY_MINUTES = 5;
 const OTP_EXPIRY_MS = OTP_EXPIRY_MINUTES * 60 * 1000;
 const ADMIN_EMAILS = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : ['ahmed_28x@outlook.com', 'royalnanoceramicwep@gmail.com'];

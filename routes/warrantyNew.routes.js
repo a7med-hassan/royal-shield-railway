@@ -7,7 +7,7 @@ const Branch = require("../models/Branch");
 const Serial = require("../models/serial");
 const nodemailer = require("nodemailer");
 
-const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || "royal-shield-secret-2024";
+const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
 const upload = multer({ dest: "uploads/" });
 
 // Nodemailer Config (Reused)
