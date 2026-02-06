@@ -1265,5 +1265,6 @@ app.get("/blog/:id", async (req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log("port is 3000");
+  console.log(`🚀 ROYAL SHIELD SERVER STARTED ON PORT ${port}`);
+  console.log("Branch OTP Routes mounted at /api/branch-otp");
 });

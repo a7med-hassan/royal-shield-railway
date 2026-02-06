@@ -23,6 +23,11 @@ const transporter = nodemailer.createTransport({
     },
 });
 
+router.get("/ping", (req, res) => {
+    res.json({ message: "Branch OTP Service is working!", time: new Date() });
+});
+
+
 /*
  * POST /api/branch-otp/request
  * Input: branchCode, agentId (optional)
