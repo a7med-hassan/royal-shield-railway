@@ -15,8 +15,9 @@ const ADMIN_EMAILS = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split('
 // Nodemailer Transporter
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "royalshieldworld.com",
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    requireTLS: true,
     auth: {
         user: process.env.SMTP_USER || "no-reply@royalshieldworld.com",
         pass: process.env.SMTP_PASS,
