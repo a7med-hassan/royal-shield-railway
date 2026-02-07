@@ -13,12 +13,14 @@ const upload = multer({ dest: "uploads/" });
 // Nodemailer Config (Reused)
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "royalshieldworld.com",
-    port: parseInt(process.env.SMTP_PORT) || 465,
-    secure: process.env.SMTP_SECURE === "true",
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.SMTP_USER || "no-reply@royalshieldworld.com",
         pass: process.env.SMTP_PASS,
     },
+    connectionTimeout: 20000,
+    socketTimeout: 20000
 });
 
 const ADMIN_EMAILS = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : ['ahmed_28x@outlook.com', 'royalnanoceramicwep@gmail.com'];

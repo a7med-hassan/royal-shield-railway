@@ -15,12 +15,14 @@ const ADMIN_EMAILS = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split('
 // Nodemailer Transporter
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "royalshieldworld.com",
-    port: parseInt(process.env.SMTP_PORT) || 465,
-    secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.SMTP_USER || "no-reply@royalshieldworld.com",
         pass: process.env.SMTP_PASS,
     },
+    connectionTimeout: 20000,
+    socketTimeout: 20000
 });
 
 router.get("/ping", (req, res) => {
