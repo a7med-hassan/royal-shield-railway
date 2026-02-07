@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
+
 const Branch = require("../models/Branch");
 const OtpRequest = require("../models/OtpRequest");
 
@@ -12,18 +12,7 @@ const OTP_EXPIRY_MINUTES = 5;
 const OTP_EXPIRY_MS = OTP_EXPIRY_MINUTES * 60 * 1000;
 const ADMIN_EMAILS = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : ['ahmed_28x@outlook.com', 'royalnanoceramicwep@gmail.com'];
 
-// Nodemailer Transporter
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "royalshieldworld.com",
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.SMTP_USER || "no-reply@royalshieldworld.com",
-        pass: process.env.SMTP_PASS,
-    },
-    connectionTimeout: 20000,
-    socketTimeout: 20000
-});
+const { sendOtpEmail } = require("../utils/resendEmail");
 
 router.get("/ping", (req, res) => {
     res.json({ message: "Branch OTP Service is working!", time: new Date() });
@@ -64,26 +53,8 @@ router.post("/request", async (req, res) => {
         });
         await otpRequest.save();
 
-        // 4. Send Email
-        const mailOptions = {
-            from: `"${process.env.FROM_NAME || 'Royal Shield World'}" <${process.env.FROM_EMAIL || 'no-reply@royalshieldworld.com'}>`,
-            to: ADMIN_EMAILS, // Array of admin emails
-            subject: `New OTP Request - Branch: ${branch.branchName}`,
-            html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Branch Access OTP Request</h2>
-          <p><strong>Branch:</strong> ${branch.branchName} (${branch.branchCode})</p>
-          <p><strong>City:</strong> ${branch.city}, ${branch.country}</p>
-          <p><strong>Agent ID:</strong> ${branch.agentId || 'N/A'}</p>
-          <div style="margin: 20px 0; padding: 10px; background-color: #f4f4f4; border-left: 5px solid #007bff;">
-            <p style="font-size: 24px; font-weight: bold; margin: 0;">OTP: ${otp}</p>
-          </div>
-          <p>This OTP is valid for ${OTP_EXPIRY_MINUTES} minutes.</p>
-        </div>
-      `
-        };
-
-        await transporter.sendMail(mailOptions);
+        // 4. Send Email via Resend
+        await sendOtpEmail(ADMIN_EMAILS, otp);
 
         res.json({
             success: true,
