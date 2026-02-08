@@ -60,6 +60,7 @@ router.post("/request", async (req, res) => {
             success: true,
             message: "OTP sent to admins",
             requestId: otpRequest._id,
+            branchName: branch.branchName,
             expiresIn: OTP_EXPIRY_MINUTES * 60
         });
 
