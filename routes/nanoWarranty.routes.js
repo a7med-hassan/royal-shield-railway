@@ -1,0 +1,150 @@
+const express = require("express");
+const router = express.Router();
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const jwt = require("jsonwebtoken");
+const NanoWarranty = require("../models/NanoWarranty");
+
+const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || "royal-shield-secret-2024";
+
+// Ensure uploads/nano directory exists
+const uploadDir = path.join(__dirname, "../uploads/nano");
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer storage configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    },
+});
+
+const upload = multer({ storage });
+
+// Auth middleware
+const authMiddleware = (req, res, next) => {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, message: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(403).json({ success: false, message: "Invalid token" });
+    }
+};
+
+// Generate unique serial number
+const generateSerial = () => {
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    return `NANO-${randomNum}`;
+};
+
+/*
+ * POST /api/nano-warranties/activate
+ * Activate Nano Warranty with image upload
+ */
+router.post("/activate", authMiddleware, upload.single("image"), async (req, res) => {
+    try {
+        const { name, phoneNumber, email, brand, model, color, address, plateNumber, productCode } = req.body;
+
+        if (!name || !phoneNumber) {
+            return res.status(400).json({ success: false, message: "Name and phone number are required" });
+        }
+
+        // Generate unique serial
+        let internalSerial = generateSerial();
+        let exists = await NanoWarranty.findOne({ internalSerial });
+        while (exists) {
+            internalSerial = generateSerial();
+            exists = await NanoWarranty.findOne({ internalSerial });
+        }
+
+        const nanoWarranty = new NanoWarranty({
+            name,
+            phoneNumber,
+            email,
+            brand,
+            model,
+            color,
+            address,
+            plateNumber,
+            productCode,
+            internalSerial,
+            imagePath: req.file ? `uploads/nano/${req.file.filename}` : "",
+        });
+
+        await nanoWarranty.save();
+
+        res.json({
+            success: true,
+            serial: internalSerial,
+            message: "Warranty activated successfully",
+        });
+    } catch (error) {
+        console.error("Nano Warranty Activation Error:", error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+});
+
+/*
+ * GET /api/nano-warranties
+ * Get all nano warranties (Admin)
+ */
+router.get("/", authMiddleware, async (req, res) => {
+    try {
+        const warranties = await NanoWarranty.find({}).sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            data: warranties,
+        });
+    } catch (error) {
+        console.error("Get Nano Warranties Error:", error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+});
+
+/*
+ * DELETE /api/nano-warranties/:id
+ * Delete nano warranty by ID (Admin)
+ */
+router.delete("/:id", authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const warranty = await NanoWarranty.findByIdAndDelete(id);
+
+        if (!warranty) {
+            return res.status(404).json({ success: false, message: "Warranty not found" });
+        }
+
+        // Delete associated image if exists
+        if (warranty.imagePath) {
+            const imagePath = path.join(__dirname, "..", warranty.imagePath);
+            if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: "Warranty deleted successfully",
+        });
+    } catch (error) {
+        console.error("Delete Nano Warranty Error:", error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+});
+
+module.exports = router;

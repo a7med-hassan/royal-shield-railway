@@ -63,10 +63,12 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const branchOtpRoutes = require("./routes/branchOtp.routes");
 const adminBranchRoutes = require("./routes/adminBranch.routes");
 const warrantyNewRoutes = require("./routes/warrantyNew.routes");
+const nanoWarrantyRoutes = require("./routes/nanoWarranty.routes");
 
 app.use("/api/branch-otp", branchOtpRoutes);
 app.use("/api/admin/branches", adminBranchRoutes);
 app.use("/api/warranty", warrantyNewRoutes);
+app.use("/api/nano-warranties", nanoWarrantyRoutes);
 
 const Warranty = require("./models/warranty");
 const Serial = require("./models/serial");
