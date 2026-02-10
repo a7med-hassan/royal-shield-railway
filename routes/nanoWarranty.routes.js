@@ -56,11 +56,15 @@ const generateSerial = () => {
  */
 router.post("/activate", authMiddleware, upload.single("image"), async (req, res) => {
     try {
-        const { name, phoneNumber, email, brand, model, color, address, plateNumber, productCode, otp } = req.body;
+        let { name, phoneNumber, email, brand, model, color, address, plateNumber, productCode, otp } = req.body;
 
         if (!name || !phoneNumber || !otp) {
             return res.status(400).json({ success: false, message: "Name, phone number, and OTP are required" });
         }
+
+        // Clean inputs
+        phoneNumber = phoneNumber.toString().trim();
+        otp = otp.toString().trim();
 
         // Generate unique serial
         let internalSerial = generateSerial();
@@ -69,6 +73,9 @@ router.post("/activate", authMiddleware, upload.single("image"), async (req, res
             internalSerial = generateSerial();
             exists = await NanoWarranty.findOne({ internalSerial });
         }
+
+        // Check if warranty already exists with this phone number and product code (optional logic, but good for data integrity)
+        // For now, we proceed as designed.
 
         const nanoWarranty = new NanoWarranty({
             name,
@@ -118,23 +125,36 @@ router.get("/", authMiddleware, async (req, res) => {
 
 /*
  * DELETE /api/nano-warranties/:id
- * Delete nano warranty by ID (Admin)
+ * Delete nano warranty by ID or Internal Serial (Admin)
  */
 router.delete("/:id", authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
+        console.log(`Attempting to delete Nano Warranty with ID/Serial: ${id}`);
 
-        const warranty = await NanoWarranty.findByIdAndDelete(id);
+        let warranty;
+
+        // Check if id is a valid ObjectId
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            warranty = await NanoWarranty.findByIdAndDelete(id);
+        } else {
+            // Try to delete by internalSerial
+            warranty = await NanoWarranty.findOneAndDelete({ internalSerial: id });
+        }
 
         if (!warranty) {
+            console.warn(`Nano Warranty not found for deletion with ID/Serial: ${id}`);
             return res.status(404).json({ success: false, message: "Warranty not found" });
         }
+
+        console.log(`Successfully deleted Nano Warranty: ${warranty.internalSerial} (${warranty._id})`);
 
         // Delete associated image if exists
         if (warranty.imagePath) {
             const imagePath = path.join(__dirname, "..", warranty.imagePath);
             if (fs.existsSync(imagePath)) {
                 fs.unlinkSync(imagePath);
+                console.log(`Deleted associated image: ${imagePath}`);
             }
         }
 
@@ -154,15 +174,22 @@ router.delete("/:id", authMiddleware, async (req, res) => {
  */
 router.post("/check-status", async (req, res) => {
     try {
-        const { phoneNumber, otp } = req.body;
+        let { phoneNumber, otp } = req.body;
 
         if (!phoneNumber || !otp) {
             return res.status(400).json({ success: false, message: "Phone number and OTP are required" });
         }
 
+        // Clean inputs
+        phoneNumber = phoneNumber.toString().trim();
+        otp = otp.toString().trim();
+
+        console.log(`Checking Nano Warranty Status for Phone: ${phoneNumber}, OTP: ${otp}`);
+
         const warranty = await NanoWarranty.findOne({ phoneNumber, otp });
 
         if (!warranty) {
+            console.warn(`Nano Warranty not found for Phone: ${phoneNumber}, OTP: ${otp}`);
             return res.status(404).json({ success: false, message: "Warranty not found or invalid credentials" });
         }
 

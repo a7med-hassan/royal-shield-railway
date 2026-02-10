@@ -1270,3 +1270,5 @@ app.listen(port, () => {
   console.log(`🚀 ROYAL SHIELD SERVER STARTED ON PORT ${port}`);
   console.log("Branch OTP Routes mounted at /api/branch-otp");
 });
+
+module.exports = app;
