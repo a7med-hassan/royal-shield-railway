@@ -56,10 +56,10 @@ const generateSerial = () => {
  */
 router.post("/activate", authMiddleware, upload.single("image"), async (req, res) => {
     try {
-        const { name, phoneNumber, email, brand, model, color, address, plateNumber, productCode } = req.body;
+        const { name, phoneNumber, email, brand, model, color, address, plateNumber, productCode, otp } = req.body;
 
-        if (!name || !phoneNumber) {
-            return res.status(400).json({ success: false, message: "Name and phone number are required" });
+        if (!name || !phoneNumber || !otp) {
+            return res.status(400).json({ success: false, message: "Name, phone number, and OTP are required" });
         }
 
         // Generate unique serial
@@ -82,6 +82,7 @@ router.post("/activate", authMiddleware, upload.single("image"), async (req, res
             productCode,
             internalSerial,
             imagePath: req.file ? `uploads/nano/${req.file.filename}` : "",
+            otp
         });
 
         await nanoWarranty.save();
@@ -143,6 +144,34 @@ router.delete("/:id", authMiddleware, async (req, res) => {
         });
     } catch (error) {
         console.error("Delete Nano Warranty Error:", error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+});
+
+/*
+ * POST /api/nano-warranties/check-status
+ * Check warranty status by Phone + OTP
+ */
+router.post("/check-status", async (req, res) => {
+    try {
+        const { phoneNumber, otp } = req.body;
+
+        if (!phoneNumber || !otp) {
+            return res.status(400).json({ success: false, message: "Phone number and OTP are required" });
+        }
+
+        const warranty = await NanoWarranty.findOne({ phoneNumber, otp });
+
+        if (!warranty) {
+            return res.status(404).json({ success: false, message: "Warranty not found or invalid credentials" });
+        }
+
+        res.json({
+            success: true,
+            data: warranty
+        });
+    } catch (error) {
+        console.error("Check Nano Warranty Error:", error);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 });

@@ -37,6 +37,10 @@ const nanoWarrantySchema = new mongoose.Schema({
     imagePath: {
         type: String,
     },
+    otp: {
+        type: String,
+        required: true
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model("NanoWarranty", nanoWarrantySchema);
