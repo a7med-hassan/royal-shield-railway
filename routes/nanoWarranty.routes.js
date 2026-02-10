@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -181,17 +182,39 @@ router.post("/check-status", async (req, res) => {
         }
 
         // Clean inputs
-        phoneNumber = phoneNumber.toString().trim();
-        otp = otp.toString().trim();
+        const originalPhone = phoneNumber.toString().trim();
+        const cleanOtp = otp.toString().trim();
 
-        console.log(`Checking Nano Warranty Status for Phone: ${phoneNumber}, OTP: ${otp}`);
+        // Generate potential phone number formats
+        const phoneFormats = [originalPhone];
 
-        const warranty = await NanoWarranty.findOne({ phoneNumber, otp });
+        // If starts with +20, add version starting with 0
+        if (originalPhone.startsWith("+20")) {
+            phoneFormats.push("0" + originalPhone.substring(3));
+        }
+        // If starts with 20 (no +), add version starting with 0
+        else if (originalPhone.startsWith("20")) {
+            phoneFormats.push("0" + originalPhone.substring(2));
+        }
+        // If starts with 0, add +20
+        else if (originalPhone.startsWith("0")) {
+            phoneFormats.push("+20" + originalPhone.substring(1));
+        }
+
+        console.log(`Checking Nano Warranty. OTP: ${cleanOtp}. Phone formats to check: ${JSON.stringify(phoneFormats)}`);
+
+        // Find warranty matching ANY of the phone formats AND the OTP
+        const warranty = await NanoWarranty.findOne({
+            phoneNumber: { $in: phoneFormats },
+            otp: cleanOtp
+        });
 
         if (!warranty) {
-            console.warn(`Nano Warranty not found for Phone: ${phoneNumber}, OTP: ${otp}`);
+            console.warn(`Nano Warranty not found for Phone formats: ${JSON.stringify(phoneFormats)}, OTP: ${cleanOtp}`);
             return res.status(404).json({ success: false, message: "Warranty not found or invalid credentials" });
         }
+
+        console.log(`Warranty found! ID: ${warranty._id}, Phone: ${warranty.phoneNumber}`);
 
         res.json({
             success: true,
