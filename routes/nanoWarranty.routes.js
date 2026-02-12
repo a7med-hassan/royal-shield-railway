@@ -10,7 +10,7 @@ const NanoWarranty = require("../models/NanoWarranty");
 const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
 
 // Ensure uploads/nano directory exists
-const uploadDir = path.join(__dirname, "../uploads/nano");
+const uploadDir = path.join(process.cwd(), "uploads/nano");
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }

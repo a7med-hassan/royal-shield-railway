@@ -58,7 +58,7 @@ app.use((req, res, next) => {
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 const branchOtpRoutes = require("./routes/branchOtp.routes");
 const adminBranchRoutes = require("./routes/adminBranch.routes");
