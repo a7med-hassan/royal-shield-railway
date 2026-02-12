@@ -12,14 +12,16 @@ const path = require("path");
 
 const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
 
+// Use Railway Volume path if available, otherwise fallback to local uploads
+const UPLOAD_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), "uploads");
+
 // Configure multer storage
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadPath = path.join(process.cwd(), "uploads");
-        if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
+        if (!fs.existsSync(UPLOAD_DIR)) {
+            fs.mkdirSync(UPLOAD_DIR, { recursive: true });
         }
-        cb(null, uploadPath);
+        cb(null, UPLOAD_DIR);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);

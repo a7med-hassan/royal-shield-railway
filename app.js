@@ -13,6 +13,17 @@ const path = require("path");
 
 const app = express();
 
+// Define upload directory - uses Railway Volume if available
+const UPLOAD_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), "uploads");
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+// Serve static files BEFORE auth middleware (images need to be publicly accessible)
+app.use("/uploads", express.static(UPLOAD_DIR));
+
 app.use(express.json());
 app.use(cors({
   origin: [
@@ -58,7 +69,6 @@ app.use((req, res, next) => {
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 const branchOtpRoutes = require("./routes/branchOtp.routes");
 const adminBranchRoutes = require("./routes/adminBranch.routes");
@@ -468,12 +478,7 @@ app.post("/checkSerial", async (req, res) => {
 // configure multer for uploads with extension support
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(process.cwd(), "uploads");
-    // Ensure directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
+    cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
