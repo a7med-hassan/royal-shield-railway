@@ -579,6 +579,7 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
     productCode, // كود المنتج/السيريال الخارجي
     internalSerial, // السيريال الداخلي
     createdAt,
+    imagePath, // Accept imagePath from frontend (if uploaded separately)
   } = req.body;
 
   try {
@@ -600,7 +601,8 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
         productCode: codeToUse || "Royal-Nano",
         internalSerial: internalSerial || "",
         createdAt,
-        imagePath: req.file ? `/uploads/${req.file.filename}` : "",
+        // Use uploaded file if present, otherwise use imagePath from body
+        imagePath: req.file ? `/uploads/${req.file.filename}` : (imagePath || ""),
       });
       await newActivation.save();
       return res.status(201).send({
@@ -669,7 +671,8 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
       productCode: foundSerial.productCode || foundSerial.serialNumber,
       internalSerial: foundSerial.internalSerial || internalSerial || "",
       createdAt,
-      imagePath: req.file ? `/uploads/${req.file.filename}` : "", // Save image path to warranty
+      // Use uploaded file if present, otherwise use imagePath from body
+      imagePath: req.file ? `/uploads/${req.file.filename}` : (imagePath || ""), // Save image path to warranty
     });
 
     await newActivation.save();
@@ -677,7 +680,7 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
     res.status(201).send({
       msg: "success",
       activation: newActivation,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : "", // Return image path
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : (imagePath || ""), // Return image path
     });
   } catch (err) {
     console.error("Error in activation:", err);

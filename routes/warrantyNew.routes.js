@@ -69,7 +69,8 @@ router.post("/activate", verifySessionToken, upload.single("image"), async (req,
             name, phoneNumber, email,
             address, brand, model, color,
             productCode, internalSerial, // Note: internalSerial is optional depending on product
-            year, vin, plate // New fields if added to Warranty model, otherwise store in notes/etc or ignore for now if not in schema
+            year, vin, plate, // New fields if added to Warranty model, otherwise store in notes/etc or ignore for now if not in schema
+            imagePath // Accept imagePath from frontend (if uploaded separately via /api/upload)
         } = req.body;
 
         // TODO: Verify `productCode` exists in Serials if needed, similar to old logic.
@@ -98,7 +99,8 @@ router.post("/activate", verifySessionToken, upload.single("image"), async (req,
             productCode: productCode,
             internalSerial: internalSerial || "",
             createdAt: new Date(),
-            imagePath: req.file ? `/uploads/${req.file.filename}` : "",
+            // Use uploaded file if present, otherwise use imagePath from body, otherwise empty string
+            imagePath: req.file ? `/uploads/${req.file.filename}` : (imagePath || ""),
             // We might want to add branch info to the warranty record if the schema supports it. 
             // If not, we can append to notes or just rely on logs. 
             // Start simple: just save.
