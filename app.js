@@ -488,11 +488,12 @@ app.post("/api/upload", uploadWarranty.single("image"), (req, res) => {
   if (!req.file) {
     return res.status(400).send({ message: "No file uploaded" });
   }
-  // Return the path relative to the domain (e.g., uploads/filename.jpg)
-  const imagePath = `uploads/${req.file.filename}`;
+  // Return the path relative to the domain (e.g., /uploads/filename.jpg)
+  const imagePath = `/uploads/${req.file.filename}`;
   res.status(200).send({
+    success: true,
     message: "File uploaded successfully",
-    imagePath: imagePath.replace(/\\/g, "/")
+    imagePath: imagePath
   });
 });
 
