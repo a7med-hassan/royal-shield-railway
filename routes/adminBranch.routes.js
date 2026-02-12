@@ -22,8 +22,33 @@ const verifyAdmin = (req, res, next) => {
 };
 
 // GET /api/admin/branches
-router.get("/", verifyAdmin, async (req, res) => {
+router.get("/", async (req, res) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        "https://www.royalnanoceramic.com",
+        "https://royalnanoceramic.com",
+        "https://royalshieldworld.com",
+        "https://www.royalshieldworld.com",
+        "http://localhost:4200"
+    ];
+
+    // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+    if (allowedOrigins.includes(origin)) {
+        console.log("✅ Trusted origin (no token required):", origin);
+        try {
+            const branches = await Branch.find().sort({ createdAt: -1 });
+            return res.json({ success: true, branches });
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
+    // ⛔ باقي الطلبات لازم توكن
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
     try {
+        const decoded = jwt.verify(token, JWT_SECRET);
         const branches = await Branch.find().sort({ createdAt: -1 });
         res.json({ success: true, branches });
     } catch (error) {
@@ -32,8 +57,49 @@ router.get("/", verifyAdmin, async (req, res) => {
 });
 
 // POST /api/admin/branches
-router.post("/", verifyAdmin, async (req, res) => {
+router.post("/", async (req, res) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        "https://www.royalnanoceramic.com",
+        "https://royalnanoceramic.com",
+        "https://royalshieldworld.com",
+        "https://www.royalshieldworld.com",
+        "http://localhost:4200"
+    ];
+
+    // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+    if (allowedOrigins.includes(origin)) {
+        console.log("✅ Trusted origin (no token required):", origin);
+        try {
+            const { branchName, city, branchCode, country, agentId } = req.body;
+
+            // Check if code exists
+            const existing = await Branch.findOne({ branchCode });
+            if (existing) {
+                return res.status(400).json({ success: false, message: "Branch code already exists" });
+            }
+
+            const newBranch = new Branch({
+                branchName,
+                city,
+                branchCode,
+                country,
+                agentId
+            });
+
+            await newBranch.save();
+            return res.status(201).json({ success: true, branch: newBranch });
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
+    // ⛔ باقي الطلبات لازم توكن
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
     try {
+        const decoded = jwt.verify(token, JWT_SECRET);
         const { branchName, city, branchCode, country, agentId } = req.body;
 
         // Check if code exists
@@ -58,8 +124,42 @@ router.post("/", verifyAdmin, async (req, res) => {
 });
 
 // PUT /api/admin/branches/:id
-router.put("/:id", verifyAdmin, async (req, res) => {
+router.put("/:id", async (req, res) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        "https://www.royalnanoceramic.com",
+        "https://royalnanoceramic.com",
+        "https://royalshieldworld.com",
+        "https://www.royalshieldworld.com",
+        "http://localhost:4200"
+    ];
+
+    // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+    if (allowedOrigins.includes(origin)) {
+        console.log("✅ Trusted origin (no token required):", origin);
+        try {
+            const { branchName, city, branchCode, country, agentId, isActive } = req.body;
+
+            const branch = await Branch.findByIdAndUpdate(
+                req.params.id,
+                { branchName, city, branchCode, country, agentId, isActive },
+                { new: true }
+            );
+
+            if (!branch) return res.status(404).json({ success: false, message: "Branch not found" });
+
+            return res.json({ success: true, branch });
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
+    // ⛔ باقي الطلبات لازم توكن
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
     try {
+        const decoded = jwt.verify(token, JWT_SECRET);
         const { branchName, city, branchCode, country, agentId, isActive } = req.body;
 
         const branch = await Branch.findByIdAndUpdate(
@@ -77,8 +177,39 @@ router.put("/:id", verifyAdmin, async (req, res) => {
 });
 
 // PATCH /api/admin/branches/:id/status
-router.patch("/:id/status", verifyAdmin, async (req, res) => {
+router.patch("/:id/status", async (req, res) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        "https://www.royalnanoceramic.com",
+        "https://royalnanoceramic.com",
+        "https://royalshieldworld.com",
+        "https://www.royalshieldworld.com",
+        "http://localhost:4200"
+    ];
+
+    // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+    if (allowedOrigins.includes(origin)) {
+        console.log("✅ Trusted origin (no token required):", origin);
+        try {
+            const { isActive } = req.body;
+            const branch = await Branch.findByIdAndUpdate(
+                req.params.id,
+                { isActive },
+                { new: true }
+            );
+            if (!branch) return res.status(404).json({ success: false, message: "Branch not found" });
+            return res.json({ success: true, branch });
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
+    // ⛔ باقي الطلبات لازم توكن
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
     try {
+        const decoded = jwt.verify(token, JWT_SECRET);
         const { isActive } = req.body;
         const branch = await Branch.findByIdAndUpdate(
             req.params.id,

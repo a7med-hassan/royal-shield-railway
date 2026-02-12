@@ -110,10 +110,41 @@ router.post("/activate", authMiddleware, upload.single("image"), async (req, res
  * GET /api/nano-warranties
  * Get all nano warranties (Admin)
  */
-router.get("/", authMiddleware, async (req, res) => {
-    try {
-        const warranties = await NanoWarranty.find({}).sort({ createdAt: -1 });
+router.get("/", async (req, res) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        "https://www.royalnanoceramic.com",
+        "https://royalnanoceramic.com",
+        "https://royalshieldworld.com",
+        "https://www.royalshieldworld.com",
+        "http://localhost:4200"
+    ];
 
+    // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+    if (allowedOrigins.includes(origin)) {
+        console.log("✅ Trusted origin (no token required):", origin);
+        try {
+            const warranties = await NanoWarranty.find({}).sort({ createdAt: -1 });
+            return res.json({
+                success: true,
+                data: warranties,
+            });
+        } catch (error) {
+            console.error("Get Nano Warranties Error:", error);
+            return res.status(500).json({ success: false, message: "Server error", error: error.message });
+        }
+    }
+
+    // ⛔ باقي الطلبات لازم توكن
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, message: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const warranties = await NanoWarranty.find({}).sort({ createdAt: -1 });
         res.json({
             success: true,
             data: warranties,
@@ -128,8 +159,68 @@ router.get("/", authMiddleware, async (req, res) => {
  * DELETE /api/nano-warranties/:id
  * Delete nano warranty by ID or Internal Serial (Admin)
  */
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", async (req, res) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        "https://www.royalnanoceramic.com",
+        "https://royalnanoceramic.com",
+        "https://royalshieldworld.com",
+        "https://www.royalshieldworld.com",
+        "http://localhost:4200"
+    ];
+
+    // ✅ لو الطلب من موقع موثوق، اعرض البيانات بدون توكن
+    if (allowedOrigins.includes(origin)) {
+        console.log("✅ Trusted origin (no token required):", origin);
+        try {
+            const { id } = req.params;
+            console.log(`Attempting to delete Nano Warranty with ID/Serial: ${id}`);
+
+            let warranty;
+
+            // Check if id is a valid ObjectId
+            if (mongoose.Types.ObjectId.isValid(id)) {
+                warranty = await NanoWarranty.findByIdAndDelete(id);
+            } else {
+                // Try to delete by internalSerial
+                warranty = await NanoWarranty.findOneAndDelete({ internalSerial: id });
+            }
+
+            if (!warranty) {
+                console.warn(`Nano Warranty not found for deletion with ID/Serial: ${id}`);
+                return res.status(404).json({ success: false, message: "Warranty not found" });
+            }
+
+            console.log(`Successfully deleted Nano Warranty: ${warranty.internalSerial} (${warranty._id})`);
+
+            // Delete associated image if exists
+            if (warranty.imagePath) {
+                const imagePath = path.join(__dirname, "..", warranty.imagePath);
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
+                    console.log(`Deleted associated image: ${imagePath}`);
+                }
+            }
+
+            return res.json({
+                success: true,
+                message: "Warranty deleted successfully",
+            });
+        } catch (error) {
+            console.error("Delete Nano Warranty Error:", error);
+            return res.status(500).json({ success: false, message: "Server error", error: error.message });
+        }
+    }
+
+    // ⛔ باقي الطلبات لازم توكن
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, message: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
     try {
+        const decoded = jwt.verify(token, JWT_SECRET);
         const { id } = req.params;
         console.log(`Attempting to delete Nano Warranty with ID/Serial: ${id}`);
 
