@@ -465,7 +465,23 @@ app.post("/checkSerial", async (req, res) => {
   }
 });
 
-const uploadWarranty = multer({ dest: "uploads/" });
+// configure multer for uploads with extension support
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(process.cwd(), "uploads");
+    // Ensure directory exists
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const uploadWarranty = multer({ storage: storage });
 
 /* verify internal serial - التحقق من السيريال الداخلي */
 app.post("/verifyInternalSerial", async (req, res) => {

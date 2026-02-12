@@ -7,8 +7,27 @@ const Branch = require("../models/Branch");
 const Serial = require("../models/serial");
 const nodemailer = require("nodemailer");
 
+const fs = require("fs");
+const path = require("path");
+
 const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
-const upload = multer({ dest: "uploads/" });
+
+// Configure multer storage
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadPath = path.join(process.cwd(), "uploads");
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ storage });
 
 // Nodemailer Config (Reused)
 const transporter = nodemailer.createTransport({
