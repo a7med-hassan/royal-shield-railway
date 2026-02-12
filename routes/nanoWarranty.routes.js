@@ -89,7 +89,7 @@ router.post("/activate", authMiddleware, upload.single("image"), async (req, res
             plateNumber,
             productCode,
             internalSerial,
-            imagePath: req.file ? `uploads/nano/${req.file.filename}` : "",
+            imagePath: req.file ? `/uploads/nano/${req.file.filename}` : "",
             otp
         });
 

@@ -595,13 +595,13 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
         productCode: codeToUse || "Royal-Nano",
         internalSerial: internalSerial || "",
         createdAt,
-        imagePath: req.file ? req.file.path : "",
+        imagePath: req.file ? `/uploads/${req.file.filename}` : "",
       });
       await newActivation.save();
       return res.status(201).send({
         msg: "success",
         activation: newActivation,
-        imageUrl: req.file ? req.file.path : "",
+        imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
       });
     }
 
@@ -664,7 +664,7 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
       productCode: foundSerial.productCode || foundSerial.serialNumber,
       internalSerial: foundSerial.internalSerial || internalSerial || "",
       createdAt,
-      imagePath: req.file ? req.file.path : "", // Save image path to warranty
+      imagePath: req.file ? `/uploads/${req.file.filename}` : "", // Save image path to warranty
     });
 
     await newActivation.save();
@@ -672,7 +672,7 @@ app.post("/activation", uploadWarranty.single("image"), async (req, res) => {
     res.status(201).send({
       msg: "success",
       activation: newActivation,
-      imageUrl: req.file ? req.file.path : "", // Return image path
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : "", // Return image path
     });
   } catch (err) {
     console.error("Error in activation:", err);

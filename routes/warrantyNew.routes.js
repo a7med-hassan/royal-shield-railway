@@ -96,7 +96,7 @@ router.post("/activate", verifySessionToken, upload.single("image"), async (req,
             productCode: productCode,
             internalSerial: internalSerial || "",
             createdAt: new Date(),
-            imagePath: req.file ? req.file.path : "",
+            imagePath: req.file ? `/uploads/${req.file.filename}` : "",
             // We might want to add branch info to the warranty record if the schema supports it. 
             // If not, we can append to notes or just rely on logs. 
             // Start simple: just save.
