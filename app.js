@@ -483,6 +483,19 @@ const storage = multer.diskStorage({
 
 const uploadWarranty = multer({ storage: storage });
 
+// Generic upload endpoint
+app.post("/api/upload", uploadWarranty.single("image"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({ message: "No file uploaded" });
+  }
+  // Return the path relative to the domain (e.g., uploads/filename.jpg)
+  const imagePath = `uploads/${req.file.filename}`;
+  res.status(200).send({
+    message: "File uploaded successfully",
+    imagePath: imagePath.replace(/\\/g, "/")
+  });
+});
+
 /* verify internal serial - التحقق من السيريال الداخلي */
 app.post("/verifyInternalSerial", async (req, res) => {
   try {
