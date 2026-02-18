@@ -10,9 +10,65 @@ const OtpRequest = require("../models/OtpRequest");
 const JWT_SECRET = process.env.SHIELD_SECRET_KEY || process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || "royal-shield-secret-2024";
 const OTP_EXPIRY_MINUTES = 5;
 const OTP_EXPIRY_MS = OTP_EXPIRY_MINUTES * 60 * 1000;
-const ADMIN_EMAILS = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : ['ahmed_28x@outlook.com', 'royalnanoceramicwep@gmail.com'];
 
-const { sendOtpEmail } = require("../utils/resendEmail");
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Helper: Parse JSON from Env
+function parseJsonEnv(name, fallback = {}) {
+    try {
+        return JSON.parse(process.env[name] || '') || fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+const branchConfig = parseJsonEnv('BRANCH_CONFIG_JSON', {});
+
+// Helper: Build OTP Email
+function buildOtpEmail({ otp, branchName, branchCode }) {
+    const subject = `Warranty Activation Code – ${branchName} | Royal Shield World`;
+
+    const html = `
+    <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.6;">
+      <div style="margin-bottom: 12px;">
+        <h2 style="margin:0;">Warranty Activation Code</h2>
+        <p style="margin:6px 0 0 0; color:#555;">
+          Branch: <strong>${branchName}</strong> (<strong>${branchCode}</strong>)
+        </p>
+      </div>
+  
+      <p style="margin: 12px 0;">
+        Use the code below to approve the warranty activation for <strong>Royal Shield World</strong>.
+      </p>
+  
+      <div style="
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        padding: 12px 16px;
+        display: inline-block;
+        border: 1px solid #d4af37;
+        border-radius: 10px;
+        background: #0b1a2a;
+        color: #f3d68a;
+        margin: 10px 0 16px 0;
+      ">
+        ${otp}
+      </div>
+  
+      <p style="margin: 0 0 8px 0; color:#333;">
+        This code expires in <strong>5 minutes</strong>. Please do not share it.
+      </p>
+  
+      <p style="margin-top: 18px;">
+        — <strong>Royal Shield World</strong>
+      </p>
+    </div>`;
+
+    return { subject, html };
+}
 
 router.get("/ping", (req, res) => {
     res.json({ message: "Branch OTP Service is working!", time: new Date() });
@@ -21,7 +77,7 @@ router.get("/ping", (req, res) => {
 
 /*
  * POST /api/branch-otp/request
- * Input: branchCode, agentId (optional)
+ * Input: branchCode
  * Logic: Validate branch, Generate OTP, Hash & Store, Send Email
  */
 router.post("/request", async (req, res) => {
@@ -32,18 +88,24 @@ router.post("/request", async (req, res) => {
             return res.status(400).json({ success: false, message: "Branch code is required" });
         }
 
-        // 1. Validate Branch
-        const branch = await Branch.findOne({ branchCode, isActive: true });
-        if (!branch) {
-            return res.status(404).json({ success: false, message: "Invalid or inactive branch code" });
+        // 1. Validate Branch using Config (Emails)
+        const cfg = branchConfig[branchCode];
+        if (!cfg || !Array.isArray(cfg.emails) || cfg.emails.length !== 3) {
+            return res.status(404).json({ message: 'Branch code not configured' });
         }
 
-        // 2. Generate OTP (6 digits)
+        // 2. Validate Branch in DB (for ID and foreign key)
+        const branch = await Branch.findOne({ branchCode, isActive: true });
+        if (!branch) {
+            return res.status(404).json({ success: false, message: "Invalid or inactive branch code in DB" });
+        }
+
+        // 3. Generate OTP (6 digits)
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpHash = await bcrypt.hash(otp, 10);
         const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
 
-        // 3. Store OTP Request
+        // 4. Store OTP Request
         const otpRequest = new OtpRequest({
             branchId: branch._id,
             branchCode: branch.branchCode,
@@ -53,14 +115,22 @@ router.post("/request", async (req, res) => {
         });
         await otpRequest.save();
 
-        // 4. Send Email via Resend
-        await sendOtpEmail(ADMIN_EMAILS, otp);
+        // 5. Send Email via Resend
+        const branchName = cfg.name || branch.branchName || branchCode;
+        const { subject, html } = buildOtpEmail({ otp, branchName, branchCode });
+
+        await resend.emails.send({
+            from: process.env.RESEND_FROM || 'onboarding@resend.dev',
+            to: cfg.emails,
+            subject,
+            html
+        });
 
         res.json({
             success: true,
-            message: "OTP sent to admins",
+            message: "OTP sent to branch emails",
             requestId: otpRequest._id,
-            branchName: branch.branchName,
+            branchName: branchName,
             expiresIn: OTP_EXPIRY_MINUTES * 60
         });
 
