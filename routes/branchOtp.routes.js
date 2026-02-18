@@ -27,22 +27,22 @@ const branchConfig = parseJsonEnv('BRANCH_CONFIG_JSON', {});
 
 // Helper: Build OTP Email
 function buildOtpEmail({ otp, branchName, branchCode }) {
-    const subject = `Warranty Activation Code – ${branchName} | Royal Shield World`;
+    const subject = `Your Warranty Activation OTP – ${branchName} | Royal Shield World`;
 
     const html = `
     <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.6;">
-      <div style="margin-bottom: 12px;">
-        <h2 style="margin:0;">Warranty Activation Code</h2>
-        <p style="margin:6px 0 0 0; color:#555;">
-          Branch: <strong>${branchName}</strong> (<strong>${branchCode}</strong>)
+        <h2 style="margin:0 0 6px 0;">Warranty Activation OTP</h2>
+
+        <p style="margin: 0 0 10px 0; color:#555;">
+        Branch: <strong>${branchName}</strong> (<strong>${branchCode}</strong>)
         </p>
-      </div>
-  
-      <p style="margin: 12px 0;">
-        Use the code below to approve the warranty activation for <strong>Royal Shield World</strong>.
-      </p>
-  
-      <div style="
+
+        <p>
+        This is your One-Time Password (OTP) to activate the warranty from
+        <strong>Royal Shield World</strong>.
+        </p>
+
+        <div style="
         font-family: 'Courier New', Courier, monospace;
         font-size: 28px;
         font-weight: 800;
@@ -53,18 +53,18 @@ function buildOtpEmail({ otp, branchName, branchCode }) {
         border-radius: 10px;
         background: #0b1a2a;
         color: #f3d68a;
-        margin: 10px 0 16px 0;
-      ">
+        margin: 12px 0 16px 0;
+        ">
         ${otp}
-      </div>
-  
-      <p style="margin: 0 0 8px 0; color:#333;">
-        This code expires in <strong>5 minutes</strong>. Please do not share it.
-      </p>
-  
-      <p style="margin-top: 18px;">
+        </div>
+
+        <p style="margin: 0 0 8px 0;">
+        This code is valid for <strong>5 minutes</strong>. For security reasons, do not share this code with anyone.
+        </p>
+
+        <p style="margin-top: 18px;">
         — <strong>Royal Shield World</strong>
-      </p>
+        </p>
     </div>`;
 
     return { subject, html };
@@ -120,7 +120,7 @@ router.post("/request", async (req, res) => {
         const { subject, html } = buildOtpEmail({ otp, branchName, branchCode });
 
         await resend.emails.send({
-            from: process.env.RESEND_FROM || 'onboarding@resend.dev',
+            from: process.env.RESEND_FROM,
             to: cfg.emails,
             subject,
             html

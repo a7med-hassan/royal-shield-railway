@@ -8,7 +8,7 @@ async function sendOtpEmail(to, otp) {
   console.log("Resend Utility INVOKED");
   console.log("Attempting to send OTP via Resend...");
   console.log("To:", to);
-  const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+  const fromEmail = process.env.RESEND_FROM;
   console.log("From:", fromEmail);
   console.log("API Key Exists:", !!process.env.RESEND_API_KEY);
 
