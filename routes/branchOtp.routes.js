@@ -31,40 +31,52 @@ function buildOtpEmail({ otp, branchName, branchCode }) {
 
     const html = `
     <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.6;">
-        <h2 style="margin:0 0 6px 0;">Warranty Activation OTP</h2>
+      <h2 style="margin:0 0 6px 0;">Warranty Activation OTP</h2>
 
-        <p style="margin: 0 0 10px 0; color:#555;">
+      <p style="margin: 0 0 10px 0; color:#555;">
         Branch: <strong>${branchName}</strong> (<strong>${branchCode}</strong>)
-        </p>
+      </p>
 
-        <p>
+      <p style="margin: 0 0 10px 0; color:#555;">
+        Authorized Agent: <strong>Royal Nano Ceramic</strong>
+      </p>
+
+      <p>
         This is your One-Time Password (OTP) to activate the warranty from
         <strong>Royal Shield World</strong>.
-        </p>
+      </p>
 
-        <div style="
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 28px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        padding: 12px 16px;
-        display: inline-block;
-        border: 1px solid #d4af37;
-        border-radius: 10px;
-        background: #0b1a2a;
-        color: #f3d68a;
-        margin: 12px 0 16px 0;
-        ">
+      <div style="font-family:'Courier New',Courier,monospace;font-size:28px;font-weight:800;letter-spacing:2px;padding:12px 16px;display:inline-block;border:1px solid #d4af37;border-radius:10px;background:#0b1a2a;color:#f3d68a;margin:12px 0 16px 0;">
         ${otp}
-        </div>
+      </div>
 
-        <p style="margin: 0 0 8px 0;">
+      <p style="margin: 0 0 8px 0;">
         This code is valid for <strong>5 minutes</strong>. For security reasons, do not share this code with anyone.
-        </p>
+      </p>
 
-        <p style="margin-top: 18px;">
-        — <strong>Royal Shield World</strong>
-        </p>
+      <hr style="border:none;border-top:1px solid #e5e5e5;margin:20px 0;" />
+
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <img src="https://tools.royalshieldworld.com/public/imgs/logo.png" alt="Royal Shield World" width="120" style="display:block;max-width:120px;height:auto;" />
+        <div style="font-size:13px;color:#555;">
+          <div>
+            Website:
+            <a href="https://royalshieldworld.com/" target="_blank" style="color:#0b1a2a;text-decoration:none;">
+              royalshieldworld.com
+            </a>
+          </div>
+          <div>
+            Support:
+            <a href="mailto:support@royalshieldworld.com" style="color:#0b1a2a;text-decoration:none;">
+              support@royalshieldworld.com
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <p style="margin-top: 14px; font-size: 12px; color: #888;">
+        © Royal Shield World. All rights reserved.
+      </p>
     </div>`;
 
     return { subject, html };
