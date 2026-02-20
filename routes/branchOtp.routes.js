@@ -90,7 +90,7 @@ router.post("/request", async (req, res) => {
 
         // 1. Validate Branch using Config (Emails)
         const cfg = branchConfig[branchCode];
-        if (!cfg || !Array.isArray(cfg.emails) || cfg.emails.length !== 3) {
+        if (!cfg || !Array.isArray(cfg.emails) || cfg.emails.length < 1) {
             return res.status(404).json({ message: 'Branch code not configured' });
         }
 
