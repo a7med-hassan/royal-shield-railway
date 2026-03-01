@@ -10,10 +10,6 @@ const serialSchema = new schema({
     type: Boolean,
     default: false,
   },
-  numOfChecks: {
-    type: Number,
-    default: 3,
-  },
 });
 
 const Serial = mongoose.model("Serial", serialSchema);

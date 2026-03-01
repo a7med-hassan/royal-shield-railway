@@ -433,42 +433,31 @@ app.post("/checkSerial", async (req, res) => {
       }
     }
 
-    // التحقق من عدد المحاولات
-    if (serialNum.numOfChecks > 0) {
-      serialNum.numOfChecks -= 1;
-      await serialNum.save();
-
-      // البحث عن تفاصيل المنتج
-      let productInfo = null;
-      if (serialNum.productCode) {
-        productInfo = await Product.findOne({ code: serialNum.productCode });
-      }
-
-      // Generate JWT token
-      const token = jwt.sign(
-        {
-          productCode: serialNum.productCode || serialNum.serialNumber,
-          internalSerial: serialNum.internalSerial
-        },
-        JWT_SECRET_KEY,
-        { expiresIn: "24h" }
-      );
-
-      res.send({
-        status: "ok",
-        productCode: serialNum.productCode || serialNum.serialNumber,
-        productInfo: productInfo || {
-          code: serialNum.productCode || serialNum.serialNumber,
-          name: "منتج"
-        },
-        token
-      });
-    } else if (serialNum.numOfChecks == 0) {
-      res.send({
-        status: "false",
-        msg: "You can't check serial number more than 3 times",
-      });
+    // البحث عن تفاصيل المنتج
+    let productInfo = null;
+    if (serialNum.productCode) {
+      productInfo = await Product.findOne({ code: serialNum.productCode });
     }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        productCode: serialNum.productCode || serialNum.serialNumber,
+        internalSerial: serialNum.internalSerial
+      },
+      JWT_SECRET_KEY,
+      { expiresIn: "24h" }
+    );
+
+    res.send({
+      status: "ok",
+      productCode: serialNum.productCode || serialNum.serialNumber,
+      productInfo: productInfo || {
+        code: serialNum.productCode || serialNum.serialNumber,
+        name: "منتج"
+      },
+      token
+    });
   } catch (error) {
     console.error("Error in checkSerial:", error);
     res.status(500).send({ message: "An error occurred", error: error.message });
