@@ -690,13 +690,46 @@ app.get("/activation/lookup", async (req, res) => {
   }
 
   try {
-    // البحث في قاعدة البيانات عن تفعيل يطابق السيريال الداخلي ورقم الهاتف
+    // 1. Normalize Serial (Trim spaces)
+    const cleanSerial = internalSerial.toString().trim();
+
+    // 2. Normalize Phone Number (Generate multiple formats for robustness)
+    const originalPhone = phoneNumber.toString().trim();
+    const digitsOnly = originalPhone.replace(/\D/g, ''); // Remove spaces, +, etc.
+    const phoneFormats = [originalPhone, digitsOnly];
+
+    // Handle Egyptian formats (similar to Nano system)
+    if (digitsOnly.startsWith('20') && digitsOnly.length === 12) {
+      // 2010... -> 010...
+      phoneFormats.push('0' + digitsOnly.substring(2));
+      // 2010... -> 10...
+      phoneFormats.push(digitsOnly.substring(2));
+    }
+    
+    if (digitsOnly.length === 10 && !digitsOnly.startsWith('0')) {
+      // 10... -> 010...
+      phoneFormats.push('0' + digitsOnly);
+    }
+    
+    if (digitsOnly.length === 11 && digitsOnly.startsWith('0')) {
+      // 010... -> 10...
+      phoneFormats.push(digitsOnly.substring(1));
+      // 010... -> 2010...
+      phoneFormats.push('20' + digitsOnly.substring(1));
+      // 010... -> +2010...
+      phoneFormats.push('+20' + digitsOnly.substring(1));
+    }
+
+    console.log(`Checking Warranty. Serial: "${cleanSerial}", Phone formats: ${JSON.stringify([...new Set(phoneFormats)])}`);
+
+    // البحث في قاعدة البيانات عن تفعيل يطابق السيريال الداخلي ورقم الهاتف (بأي من الصيغ الممكنة)
     const warranty = await Warranty.findOne({
-      internalSerial: internalSerial,
-      phoneNumber: phoneNumber
+      internalSerial: cleanSerial,
+      phoneNumber: { $in: [...new Set(phoneFormats)] }
     });
 
     if (!warranty) {
+      console.warn(`Warranty not found for Serial: ${cleanSerial}, Phone formats checked.`);
       return res.status(404).json({
         status: 404,
         success: false,
