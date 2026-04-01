@@ -51,19 +51,18 @@ const allowedOrigins = [
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // لو الطلب جاي من دومين موثوق → متطلبش توكن
+  if (!origin) return next();
+
   if (allowedOrigins.includes(origin)) {
     console.log("✅ Trusted origin:", origin);
     return next();
   }
 
-  // لو مش من دومين موثوق → فعّل الحماية العادية
   if (!req.headers.authorization) {
     console.log("❌ Unauthorized access from:", origin);
     return res.status(403).json({ message: "Invalid token" });
   }
 
-  // ممكن تضيف هنا كود التحقق من التوكن (لو حابب)
   next();
 });
 
@@ -89,13 +88,20 @@ const Appointment = require("./models/appointment");
 const Application = require("./models/application");
 const Blog = require("./models/blog");
 
+const port = process.env.PORT || 3000;
+
 mongoose
-  .connect(`${process.env.MONGO_URI}`)
+  .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("db connected succefully");
+    console.log("DB connected successfully");
+    app.listen(port, () => {
+      console.log(`🚀 ROYAL SHIELD SERVER STARTED ON PORT ${port}`);
+      console.log("Branch OTP Routes mounted at /api/branch-otp");
+    });
   })
-  .catch(() => {
-    console.log("err connecting DB");
+  .catch((err) => {
+    console.error("DB connection error:", err.message);
+    process.exit(1);
   });
 
 /* admin add or delete serialss */
@@ -1325,10 +1331,5 @@ app.get("/blog/:id", async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`🚀 ROYAL SHIELD SERVER STARTED ON PORT ${port}`);
-  console.log("Branch OTP Routes mounted at /api/branch-otp");
-});
 
 module.exports = app;
